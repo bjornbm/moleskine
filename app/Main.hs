@@ -1,37 +1,55 @@
 module Main where
 
-import Lib
 import System.Environment (getArgs)
 import System.FilePath ((</>), (<.>))
 import System.Process (rawSystem)
---import System.IO
 
 import Control.Monad (join)
 import Data.List (nub, sort)
 import Text.Parsec
 import Text.Parsec.String
-import qualified Text.Parsec.Token as P
-import Text.Parsec.Language (haskellDef)
+
 
 data PageSpec = P Integer | R Integer Integer deriving (Show)
 data Topic = Topic String [PageSpec] [Topic] deriving (Show)
 
-topicsP = manyTill topicP (spaces *> eof) :: Parser [Topic]
-topicP = topicP' <*> many subTopicP :: Parser Topic
-topicP' = Topic <$> titleP <*> sepBy pageSpecP comma <* many1 endOfLine :: Parser ([Topic] -> Topic)
+-- PARSERS
+-- =======
 
-subTopicP = char '-' *> spaces *> topicP' <*> return [] :: Parser Topic
+-- | Parse the entire index of topics.
+topicsP :: Parser [Topic]
+topicsP = manyTill topicP (try $ spaces *> eof)
 
-titleP = manyTill anyChar (try (spaces <* char ':')) :: Parser String
+-- | Parse a top level topic and its subtopics.
+topicP :: Parser Topic
+topicP = topicP' <*> many subTopicP
+
+-- | Partial parse of a topic.
+topicP' :: Parser ([Topic] -> Topic)
+topicP' = Topic <$> titleP <*> sepBy pageSpecP commaP <* many1 endOfLine
+
+-- | Parse a first level sub topic.
+subTopicP :: Parser Topic
+subTopicP = char '-' *> topicP' <*> return []
+
+titleP :: Parser String
+titleP = spaces *> manyTill anyChar (try $ spaces <* char ':')
+
 pageSpecP :: Parser PageSpec
 pageSpecP = do
   page1 <- pageP
-  try (R page1 <$> (spaces *> char '-' *> pageP)) <|> return (P page1)
+  try (R page1 <$> (spaces *> char '-' *> pageP)) <|> return (P page1)  -- TODO buggy, will not fail on e.g. "12-afa".
 
-comma = try (spaces <* char ',')
-pageP = read <$> (try (spaces *> many1 digit)) :: Parser Integer
+commaP :: Parser ()
+commaP = try (spaces <* char ',')
+
+-- | Parse a page number (natural number).
+pageP :: Parser Integer
+pageP = read <$> try (spaces *> many1 digit) :: Parser Integer
 
 
+
+-- | Extract all pages pertaining to a topic, including those of subtopics.§
 topicPages :: Topic -> [Integer]
 topicPages (Topic title pages subs) = nub $ sort $ concatMap massage pages ++ concatMap topicPages subs
   where
@@ -39,23 +57,25 @@ topicPages (Topic title pages subs) = nub $ sort $ concatMap massage pages ++ co
     massage (P p) = return p
     massage (R p1 p2) = [p1 .. p2]
 
+-- | Reduce a topic and its subtopics to a list of pages and title pairs.
 flatten :: Topic -> [([Integer], String)]
-flatten topic@(Topic title pages subs) = massage topic : map (fmap (\st -> title ++ " - " ++ st) . massage) subs
+flatten topic@(Topic title pages subs) = massage topic : map (fmap prefix . massage) subs
   where
     massage :: Topic -> ([Integer], String)
     massage topic@(Topic title _ _) = (topicPages topic, title)
+    prefix subtitle = title ++ " - " ++ subtitle
 
 main :: IO ()
 main = do
-  [indexFile, pdfFile] <- getArgs
+  [indexFile, sourcePDF] <- getArgs
   res <- parseFromFile topicsP indexFile
   case res of
-    Right index -> mapM_ (writeTopic pdfFile) $ concatMap flatten index
+    Right index -> mapM_ (makePDF sourcePDF) $ concatMap flatten index
     Left err -> print err
 
-writeTopic pdfFile (pages, title) = do
+makePDF sourcePDF (pages, title) = do
   print $ title ++ ": " ++ show pages
-  code <- rawSystem "pdftk" $ [pdfFile, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
+  code <- rawSystem "pdftk" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
   case code of
     exitSuccess -> return ()
     otherwise   -> error $ "Failed on topic " ++ title
