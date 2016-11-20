@@ -4,7 +4,7 @@ import System.Environment (getArgs)
 import System.FilePath ((</>), (<.>))
 import System.Process (rawSystem)
 
-import Control.Monad (join)
+import Control.Monad (join, void)
 import Data.List (nub, sort)
 import Text.Parsec
 import Text.Parsec.String
@@ -41,7 +41,7 @@ pageSpecP = do
   try (R page1 <$> (spaces *> char '-' *> pageP)) <|> return (P page1)  -- TODO buggy, will not fail on e.g. "12-afa".
 
 commaP :: Parser ()
-commaP = try (spaces <* char ',')
+commaP = try (spaces <* char ',') <|> void (char ' ')
 
 -- | Parse a page number (natural number).
 pageP :: Parser Integer
