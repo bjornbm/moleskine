@@ -6,8 +6,8 @@ import System.Process (rawSystem)
 
 import Control.Monad (join, void)
 import Data.List (nub, sort)
-import Text.Parsec
-import Text.Parsec.String
+import Text.Megaparsec
+import Text.Megaparsec.String
 
 
 data PageSpec = P Integer | R Integer Integer deriving (Show)
@@ -18,7 +18,7 @@ data Topic = Topic String [PageSpec] [Topic] deriving (Show)
 
 -- | Parse the entire index of topics.
 topicsP :: Parser [Topic]
-topicsP = manyTill topicP (try $ spaces *> eof)
+topicsP = manyTill topicP (try $ space *> eof)
 
 -- | Parse a top level topic and its subtopics.
 topicP :: Parser Topic
@@ -26,26 +26,26 @@ topicP = topicP' <*> many subTopicP
 
 -- | Partial parse of a topic.
 topicP' :: Parser ([Topic] -> Topic)
-topicP' = Topic <$> titleP <*> sepBy pageSpecP commaP <* many1 endOfLine
+topicP' = Topic <$> titleP <*> sepBy pageSpecP commaP <* some eol
 
 -- | Parse a first level sub topic.
 subTopicP :: Parser Topic
 subTopicP = char '-' *> topicP' <*> return []
 
 titleP :: Parser String
-titleP = spaces *> manyTill anyChar (try $ spaces <* char ':')
+titleP = space *> manyTill anyChar (try $ space <* char ':')
 
 pageSpecP :: Parser PageSpec
 pageSpecP = do
   page1 <- pageP
-  try (R page1 <$> (spaces *> char '-' *> pageP)) <|> return (P page1)  -- TODO buggy, will not fail on e.g. "12-afa".
+  try (R page1 <$> (space *> char '-' *> pageP)) <|> return (P page1)  -- TODO buggy, will not fail on e.g. "12-afa".
 
 commaP :: Parser ()
-commaP = try (spaces <* char ',') <|> void (char ' ')
+commaP = try (space <* char ',') <|> void (char ' ')
 
 -- | Parse a page number (natural number).
 pageP :: Parser Integer
-pageP = read <$> try (spaces *> many1 digit) :: Parser Integer
+pageP = read <$> try (space *> some digitChar) :: Parser Integer
 
 
 
@@ -72,9 +72,12 @@ main = do
   case res of
     Right index -> mapM_ (makePDF sourcePDF) $ concatMap flatten index
     Left err -> print err
+  where
+    parseFromFile p f = parse p f <$> readFile f
 
 makePDF sourcePDF (pages, title) = do
   print $ title ++ ": " ++ show pages
+  --code <- rawSystem "echo" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
   code <- rawSystem "pdftk" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
   case code of
     exitSuccess -> return ()
