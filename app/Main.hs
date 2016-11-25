@@ -78,8 +78,5 @@ main = do
 
 makePDF sourcePDF (pages, title) = do
   print $ title ++ ": " ++ show pages
-  --code <- rawSystem "echo" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
-  code <- rawSystem "pdftk" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
-  case code of
-    exitSuccess -> return ()
-    otherwise   -> error $ "Failed on topic " ++ title
+  --rawSystem "echo" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
+  rawSystem "pdftk" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
