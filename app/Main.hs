@@ -39,6 +39,7 @@ pageSpecP :: Parser PageSpec
 pageSpecP = do
   page1 <- pageP
   try (R page1 <$> (space *> char '-' *> pageP)) <|> return (P page1)  -- TODO buggy, will not fail on e.g. "12-afa".
+  where space = many (char ' ')
 
 commaP :: Parser ()
 commaP = try (space <* char ',') <|> void (char ' ')
