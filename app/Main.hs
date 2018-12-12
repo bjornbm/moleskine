@@ -6,9 +6,11 @@ import System.Process (rawSystem)
 
 import Control.Monad (join, void)
 import Data.List (nub, sort)
+import Data.Void
 import Text.Megaparsec
-import Text.Megaparsec.String
+import Text.Megaparsec.Char
 
+type Parser = Parsec Void String
 
 data PageSpec = P Integer | R Integer Integer deriving (Show)
 data Topic = Topic String [PageSpec] [Topic] deriving (Show)
