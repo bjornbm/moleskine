@@ -35,7 +35,7 @@ subTopicP :: Parser Topic
 subTopicP = char '-' *> topicP' <*> return []
 
 titleP :: Parser String
-titleP = space *> manyTill anyChar (try $ space <* char ':')
+titleP = space *> manyTill printChar (try $ space <* char ':')
 
 pageSpecP :: Parser PageSpec
 pageSpecP = do
