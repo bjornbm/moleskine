@@ -5,7 +5,7 @@ import System.FilePath ((</>), (<.>))
 import System.Process (rawSystem)
 
 import Control.Monad (join, void)
-import Data.List (nub, sort)
+import Data.List (nub, sort, intercalate)
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
@@ -80,5 +80,5 @@ main = do
 
 makePDF sourcePDF (pages, title) = do
   print $ title ++ ": " ++ show pages
-  --rawSystem "echo" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
-  rawSystem "pdftk" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
+  rawSystem "cpdf" $ [sourcePDF, intercalate "," (map show pages), "-o", "out" </> title <.> "pdf"]
+  --rawSystem "pdftk" $ [sourcePDF, "cat"] ++ map show pages ++ ["output", "out" </> title <.> "pdf"]
