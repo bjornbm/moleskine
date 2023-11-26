@@ -1,0 +1,28 @@
+# Prerequisites
+
+Install `cpdf` from http://community.coherentpdf.com or from:
+https://github.com/coherentgraphics/cpdf-binaries/archive/master.zip (put OSX binary in ~/.local/bin and manual in ~/Documents)
+
+On macOS:
+
+```sh
+cp ~/Downloads/cpdf-binaries-master/OSX-ARM/cpdf ~/.local/bin/
+xattr -cr ~/.local/bin/cpdf  # Trust executable
+```
+Alternatively, install and use `pdftk` instead
+
+# Running
+
+If using _pdftk_, modify commenting at the end of `app/Main.hs` accordingly.
+
+```
+stack build
+cpdf -scale-to-fit a5portrait in.pdf in_a5p.pdf  # optional
+mkdir out
+stack exec index.txt in_a5p.pdf
+
+```
+
+# Notes
+
+It doesn't work to include the `-scale-to-file` and the page numbers on the same line, apparently. Therefore the need to resize before creating pages.
